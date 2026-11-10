@@ -94,7 +94,7 @@ public class ConversionServer {
 
 ### Création du projet client
 
-![Création du projet client](images/02_creation_client.png)
+![Création du projet client](images/02_création_client.png)
 
 ### Export de l'interface distante en `.jar`
 
