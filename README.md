@@ -181,3 +181,80 @@ métier reste sur le serveur, ce qui sépare clairement les deux applications.
 **Difficultés rencontrées :** la génération du JAR a échoué avec le chemin
 `out\production`. Je l'ai résolue en compilant l'interface seule avec `javac`
 puis en créant le JAR avec la commande `jar`, adaptée à PowerShell.
+
+---
+
+# Activité 5-2 : Service de banque (RMI + JNDI)
+
+## Objectif
+Gérer des comptes bancaires (code, solde, date de création) via un serveur RMI
+central. Le client peut créer un compte (si le code n'existe pas) et consulter
+un compte à partir de son code. L'application est d'abord réalisée avec le
+registre RMI, puis migrée vers JNDI.
+
+## Étape 2 : Serveur `RMIBanque_Server`
+![Création du projet serveur](images/banque/01_creation_serveur.png)
+
+**Classe sérialisable `Compte`** (package `metier`)
+![Compte](images/banque/02_classe_Compte.png)
+
+**Interface distante `IBanque`** (package `rmiService`)
+![IBanque](images/banque/03_interface_IBanque.png)
+
+**Implémentation `BanqueImpl`**
+![BanqueImpl](images/banque/04_classe_BanqueImpl.png)
+
+**Serveur `BanqueServer`** (package `rmiServer`)
+![BanqueServer](images/banque/05_classe_BanqueServer.png)
+![Arborescence serveur](images/banque/06_arborescence_serveur.png)
+
+## Étape 3 : Client `RMIBanque_Client`
+![Création du projet client](images/banque/07_creation_client.png)
+
+**Export de `banqueClient.jar`** (uniquement `IBanque` et `Compte`)
+![Création du JAR](images/banque/08_creation_jar.png)
+![Fichier JAR](images/banque/09_banqueClient_jar.png)
+
+**Ajout au classpath**
+![Classpath](images/banque/10_classpath_client.png)
+![Bibliothèques externes](images/banque/11_external_libraries.png)
+
+**Classe `BanqueClient`**
+![BanqueClient](images/banque/12_classe_BanqueClient.png)
+
+## Étape 4 : Exécution (registre RMI)
+![Serveur](images/banque/13_execution_serveur.png)
+![Client](images/banque/14_execution_client.png)
+
+## Étape 5 : Migration vers JNDI
+
+**Fichier `jndi.properties`** (dans `src`, côté serveur et côté client) :
+```properties
+java.naming.factory.initial=com.sun.jndi.rmi.registry.RegistryContextFactory
+java.naming.provider.url=rmi://localhost:1099
+```
+![jndi.properties](images/banque/15_jndi_properties.png)
+
+**Serveur** : le binding se fait avec `InitialContext.rebind("BanqueService", banque)`.
+![BanqueServer JNDI](images/banque/16_BanqueServer_JNDI.png)
+
+**Client** : la recherche se fait avec `InitialContext.lookup("BanqueService")`.
+![BanqueClient JNDI](images/banque/17_BanqueClient_JNDI.png)
+
+**Exécution avec JNDI**
+![Serveur JNDI](images/banque/18_execution_serveur_jndi.png)
+![Client JNDI](images/banque/19_execution_client_jndi.png)
+
+## Synthèse
+Cette activité m'a permis de développer un service bancaire réparti avec Java RMI.
+La classe `Compte` implémente `Serializable` : elle est passée **par valeur**
+(copie) entre le client et le serveur, alors que l'objet `BanqueImpl` est
+accessible **par référence** (stub). Le client ne reçoit que `IBanque` et `Compte`
+via `banqueClient.jar`. Le serveur contrôle les règles métier : un code déjà
+utilisé est refusé, et la consultation d'un code inexistant renvoie un message d'erreur.
+
+Avec JNDI, le code ne dépend plus directement de `Naming`. L'accès à l'annuaire
+passe par `InitialContext`, configuré par `jndi.properties` (fabrique
+`RegistryContextFactory` et URL `rmi://localhost:1099`). Changer d'annuaire
+revient alors à modifier ce fichier, pas le code. Le registre RMI doit toutefois
+rester démarré, car JNDI s'appuie dessus.
